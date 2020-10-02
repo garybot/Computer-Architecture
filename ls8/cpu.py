@@ -22,30 +22,38 @@ class CPU:
         """Load a program into memory."""
 
         address = 0
+        if len(sys.argv) < 2:
+            print("Remember to pass second filename")
+            print("usage: python3 fileio.py <second_file_name.ls8>")
+            exit()
 
-        # For now, we've just hardcoded a program:
+        file = sys.argv[1]
 
-        program = [
-            # From print8.ls8
-            0b10000010, # LDI R0,8
-            0b00000000,
-            0b00001000,
-            0b01000111, # PRN R0
-            0b00000000,
-            0b00000001, # HLT
-        ]
-
-        for instruction in program:
-            self.ram[address] = instruction
-            address += 1
-
+        try:
+            with open(file, 'r') as f:
+                for line in f:
+                    if line != "\n" and line[0] != "#":
+                        self.ram[address] = int(line[0:8], 2)
+                        address += 1
+        
+        except FileNotFoundError:
+            print(f'Error from {sys.argv[0]}: file {sys.argv[1]} not found!')
+            exit()
 
     def alu(self, op, reg_a, reg_b):
         """ALU operations."""
 
         if op == "ADD":
             self.reg[reg_a] += self.reg[reg_b]
-        #elif op == "SUB": etc
+        elif op == "SUB":
+            self.reg[reg_a] -= self.reg[reg_b]
+        elif op == "MUL":
+            self.reg[reg_a] *= self.reg[reg_b]
+        elif op == "DIV":
+            self.reg[reg_a] /= self.reg[reg_b]
+        elif op == "OR":
+            self.reg[reg_a] |= self.reg[reg_b]
+
         else:
             raise Exception("Unsupported ALU operation")
 
@@ -81,14 +89,15 @@ class CPU:
 
         while running:
             command = self.ram[self.pc]
-            self.trace()
+            # self.trace()
             if command == 0b10000010: # LDI
                 self.reg[self.ram_read(self.pc + 1)] = self.ram_read(self.pc + 2)
-                self.pc += 2
             
             elif command == 0b01000111: # PRN
                 print(self.reg[self.ram_read(self.pc + 1)])
-                self.pc += 1
+
+            elif command == 0b10100010: # MUL
+                self.alu("MUL", self.ram_read(self.pc + 1), self.ram_read(self.pc + 2))
             
             elif command == 0b00000001: # HLT
                 running = False
@@ -97,4 +106,4 @@ class CPU:
                 print('unknown command!')
                 running = False
             
-            self.pc += 1
+            self.pc += (command >> 6) + 1
