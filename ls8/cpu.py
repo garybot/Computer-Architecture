@@ -62,15 +62,15 @@ class CPU:
     def alu(self, op, reg_a, reg_b):
         """ALU operations."""
 
-        if op == "ADD":
+        if op == 0b10100000: # ADD
             self.reg[reg_a] += self.reg[reg_b]
-        elif op == "SUB":
+        elif op == 0b10100001: # SUB
             self.reg[reg_a] -= self.reg[reg_b]
-        elif op == "MUL":
+        elif op == 0b10100010: # MUL
             self.reg[reg_a] *= self.reg[reg_b]
-        elif op == "DIV":
+        elif op == 0b10100011: # DIV
             self.reg[reg_a] /= self.reg[reg_b]
-        elif op == "OR":
+        elif op == 0b10101010: # OR
             self.reg[reg_a] |= self.reg[reg_b]
 
         else:
@@ -107,18 +107,14 @@ class CPU:
             alu = (ir >> 5) & 0b001
             sets_pointer = (ir >> 4) & 0b0001
             # self.trace()
+            if alu:
+                self.alu(ir, operand_a, operand_b)
 
-            if ir == 0b10000010: # LDI
+            elif ir == 0b10000010: # LDI
                 self.reg[operand_a] = operand_b
 
             elif ir == 0b01000111: # PRN
                 print(self.reg[operand_a])
-
-            elif ir == 0b10100010: # MUL
-                self.alu("MUL", operand_a, operand_b)
-
-            elif ir == 0b10100000: # ADD
-                self.alu("ADD", operand_a, operand_b)
 
             elif ir == 0b01000101: # PUSH
                 self.reg[7] -= 1
@@ -132,7 +128,19 @@ class CPU:
                 print(self.reg[operand_a])
 
             elif ir == 0b01010100: # JMP
-                self.pc = operand_a
+                self.pc = self.reg[operand_a]
+
+            elif ir == 0b01010000: # CALL
+                self.reg[7] -= 1
+                self.ram_write(self.reg[7], self.pc+2)
+                self.pc = self.reg[operand_a]
+
+            elif ir == 0b00010001: # RET
+                self.pc = self.ram_read(self.reg[7])
+                self.reg[7] += 1
+
+            elif ir == 0b00011000: # MULT2PRINT
+                pass
 
             elif ir == 0b00000001: # HLT
                 running = False
