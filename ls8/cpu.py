@@ -29,6 +29,17 @@ class CPU:
 
         self.ram = [0] * 256
 
+        # self.dispatch = {}
+        #
+        # self.dispatch[0b10000010] = self.ldi
+        # self.dispatch[0b01000111] = self.prn
+        # self.dispatch[0b01000101] = self.push
+        # self.dispatch[0b01000110] = self.pop
+        # self.dispatch[0b01000101] = self.jmp
+        # self.dispatch[0b01010000] = self.call
+        # self.dispatch[0b00010001] = self.ret
+        # self.dispatch[0b00000001] = self.hlt
+
     def ram_read(self, mar):
         return self.ram[mar]
 
@@ -39,16 +50,15 @@ class CPU:
     def load(self):
         """Load a program into memory."""
 
-        address = 0
         if len(sys.argv) < 2:
             print("Remember to pass second filename")
             print("Usage: python3 fileio.py <second_file_name.ls8>")
             exit()
 
-        file = sys.argv[1]
+        address = 0
 
         try:
-            with open(file, 'r') as f:
+            with open(sys.argv[1], 'r') as f:
                 for line in f:
                     if line != "\n" and line[0] != "#":
                         # self.ram[address] = int(line[0:8], 2)
@@ -72,6 +82,13 @@ class CPU:
             self.reg[reg_a] /= self.reg[reg_b]
         elif op == 0b10101010: # OR
             self.reg[reg_a] |= self.reg[reg_b]
+        elif op == 0b10100111: # CMP
+            if self.reg[reg_a] > self.reg[reg_b]:
+                self.fl |= 0b00000100
+            elif self.reg[reg_a] > self.reg[reg_b]:
+                self.fl |= 0b00000010
+            else:
+                self.fl |= 0b00000001
 
         else:
             raise Exception("Unsupported ALU operation")
@@ -95,6 +112,35 @@ class CPU:
             print(" %02X" % self.reg[i], end='')
 
         print()
+    #
+    # def ldi(self, operand_a, operand_b):
+    #     self.reg[operand_a] = operand_b
+    #
+    # def prn(self, operand_a, operand_b):
+    #     print(self.reg[operand_a])
+    #
+    # def push(self, operand_a, operand_b):
+    #     self.reg[7] -= 1
+    #     self.ram_write(self.reg[7], self.reg[operand_a])
+    #
+    # def pop(self, operand_a, operand_b):
+    #     self.reg[operand_a] = self.ram_read(self.reg[7])
+    #     self.reg[7] += 1
+    #
+    # def jmp(self, operand_a, operand_b):
+    #     self.pc = self.reg[operand_a]
+    #
+    # def call(self, operand_a, operand_b):
+    #     self.reg[7] -= 1
+    #     self.ram_write(self.reg[7], self.pc+2)
+    #     self.pc = self.reg[operand_a]
+    #
+    # def ret(self, operand_a, operand_b):
+    #     self.pc = self.ram_read(self.reg[7])
+    #     self.reg[7] += 1
+    #
+    # def hlt(self, operand_a, operand_b):
+    #     running = False
 
     def run(self):
         """Run the CPU."""
@@ -106,9 +152,14 @@ class CPU:
             operand_b = self.ram_read(self.pc + 2)
             alu = (ir >> 5) & 0b001
             sets_pointer = (ir >> 4) & 0b0001
-            # self.trace()
+            self.trace()
             if alu:
                 self.alu(ir, operand_a, operand_b)
+            # elif ir == 0b00000001: # HLT
+            #     running = False
+            #
+            # else:
+            #     self.dispatch[ir](operand_a, operand_b)
 
             elif ir == 0b10000010: # LDI
                 self.reg[operand_a] = operand_b
@@ -124,11 +175,24 @@ class CPU:
                 self.reg[operand_a] = self.ram_read(self.reg[7])
                 self.reg[7] += 1
 
-            elif ir == 0b01000111: # PRN
-                print(self.reg[operand_a])
-
             elif ir == 0b01010100: # JMP
                 self.pc = self.reg[operand_a]
+
+            elif ir == 0b01010101: # JEQ
+                is_equal = self.fl & 0b00000001
+                # print(is_equal)
+                if is_equal:
+                    self.pc = self.reg[operand_a]
+                else:
+                    self.pc += 2
+
+            elif ir == 0b01010110: # JNE
+                is_equal = self.fl & 0b00000001
+                print(is_equal)
+                if not is_equal:
+                    self.pc = self.reg[operand_a]
+                else:
+                    self.pc += 2
 
             elif ir == 0b01010000: # CALL
                 self.reg[7] -= 1
@@ -138,9 +202,6 @@ class CPU:
             elif ir == 0b00010001: # RET
                 self.pc = self.ram_read(self.reg[7])
                 self.reg[7] += 1
-
-            elif ir == 0b00011000: # MULT2PRINT
-                pass
 
             elif ir == 0b00000001: # HLT
                 running = False
