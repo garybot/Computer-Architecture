@@ -80,8 +80,27 @@ class CPU:
             self.reg[reg_a] *= self.reg[reg_b]
         elif op == 0b10100011: # DIV
             self.reg[reg_a] /= self.reg[reg_b]
+        elif op == 0b10100100: # MOD
+            self.reg[reg_a] %= self.reg[reg_b]
+
+        elif op == 0b10101000: # AND
+            self.reg[reg_a] &= self.reg[reg_b]
         elif op == 0b10101010: # OR
             self.reg[reg_a] |= self.reg[reg_b]
+        elif op == 0b10101011: # XOR
+            self.reg[reg_a] ^= self.reg[reg_b]
+        elif op == 0b01101001: # NOT
+            self.reg[reg_a] != self.reg[reg_b]
+        elif op == 0b10101100: # SHL
+            self.reg[reg_a] = self.reg[reg_a] << self.reg[reg_b]
+        elif op == 0b10101100: # SHR
+            self.reg[reg_a] = self.reg[reg_a] >> self.reg[reg_b]
+
+        elif op == 0b01100101: # INC
+            self.reg[reg_a] += 1
+        elif op == 0b01100110: # DEC
+            self.reg[reg_a] -= 1
+
         elif op == 0b10100111: # CMP
             if self.reg[reg_a] > self.reg[reg_b]:
                 self.fl |= 0b00000100
@@ -152,7 +171,7 @@ class CPU:
             operand_b = self.ram_read(self.pc + 2)
             alu = (ir >> 5) & 0b001
             sets_pointer = (ir >> 4) & 0b0001
-            self.trace()
+            # self.trace()
             if alu:
                 self.alu(ir, operand_a, operand_b)
             # elif ir == 0b00000001: # HLT
@@ -164,8 +183,17 @@ class CPU:
             elif ir == 0b10000010: # LDI
                 self.reg[operand_a] = operand_b
 
+            elif ir == 0b10000011: # LD
+                self.reg[operand_a] = self.ram[self.reg[operand_b]]
+
+            elif ir == 0b10000100: # ST
+                self.ram[self.reg[operand_a]] = self.reg[operand_b]
+
             elif ir == 0b01000111: # PRN
                 print(self.reg[operand_a])
+
+            elif ir == 0b01001000: # PRA
+                print(chr(self.reg[operand_a]))
 
             elif ir == 0b01000101: # PUSH
                 self.reg[7] -= 1
@@ -194,6 +222,40 @@ class CPU:
                 else:
                     self.pc += 2
 
+            elif ir == 0b01011000: # JLT
+                is_less_than = self.fl & 0b00000010
+                # print(is_equal)
+                if is_less_than:
+                    self.pc = self.reg[operand_a]
+                else:
+                    self.pc += 2
+
+            elif ir == 0b01011000: # JLE
+                is_less_than = self.fl & 0b00000010
+                is_equal = self.fl & 0b00000001
+                # print(is_equal)
+                if is_less_than or is_equal:
+                    self.pc = self.reg[operand_a]
+                else:
+                    self.pc += 2
+
+            elif ir == 0b01010111: # JGT
+                is_greater_than = self.fl & 0b00000100
+                # print(is_equal)
+                if is_greater_than:
+                    self.pc = self.reg[operand_a]
+                else:
+                    self.pc += 2
+
+            elif ir == 0b01011000: # JGE
+                is_greater_than = self.fl & 0b00000100
+                is_equal = self.fl & 0b00000001
+                # print(is_equal)
+                if is_greater_than or is_equal:
+                    self.pc = self.reg[operand_a]
+                else:
+                    self.pc += 2
+
             elif ir == 0b01010000: # CALL
                 self.reg[7] -= 1
                 self.ram_write(self.reg[7], self.pc+2)
@@ -205,6 +267,9 @@ class CPU:
 
             elif ir == 0b00000001: # HLT
                 running = False
+
+            elif ir == 0b00000000: # NOP
+                pass
 
             else:
                 print('Unknown Command!')
